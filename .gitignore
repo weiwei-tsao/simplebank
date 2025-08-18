@@ -1,2 +1,7 @@
 .DS_Store
 .prettierignore
+.gitignore
+
+# go files
+go.sum
+go.mod
