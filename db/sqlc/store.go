@@ -97,21 +97,32 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 			return err
 		}
 
-		// get current accounts to update balances
-		fromAccount, err := q.GetAccount(ctx, arg.FromAccountID)
-		if err != nil {
-			return err
-		}
-
-		toAccount, err := q.GetAccount(ctx, arg.ToAccountID)
-		if err != nil {
-			return err
+		// get current accounts with locking to prevent race conditions
+		// lock accounts in a consistent order to prevent deadlocks
+		if arg.FromAccountID < arg.ToAccountID {
+			result.FromAccount, err = q.GetAccountForUpdate(ctx, arg.FromAccountID)
+			if err != nil {
+				return err
+			}
+			result.ToAccount, err = q.GetAccountForUpdate(ctx, arg.ToAccountID)
+			if err != nil {
+				return err
+			}
+		} else {
+			result.ToAccount, err = q.GetAccountForUpdate(ctx, arg.ToAccountID)
+			if err != nil {
+				return err
+			}
+			result.FromAccount, err = q.GetAccountForUpdate(ctx, arg.FromAccountID)
+			if err != nil {
+				return err
+			}
 		}
 
 		// update accounts balance
 		result.FromAccount, err = q.UpdateAccount(ctx, UpdateAccountParams{
 			ID:      arg.FromAccountID,
-			Balance: pgtype.Int8{Int64: fromAccount.Balance.Int64 - arg.Amount, Valid: true},
+			Balance: pgtype.Int8{Int64: result.FromAccount.Balance.Int64 - arg.Amount, Valid: true},
 		})
 
 		if err != nil {
@@ -120,7 +131,7 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 
 		result.ToAccount, err = q.UpdateAccount(ctx, UpdateAccountParams{
 			ID:      arg.ToAccountID,
-			Balance: pgtype.Int8{Int64: toAccount.Balance.Int64 + arg.Amount, Valid: true},
+			Balance: pgtype.Int8{Int64: result.ToAccount.Balance.Int64 + arg.Amount, Valid: true},
 		})
 
 		if err != nil {
