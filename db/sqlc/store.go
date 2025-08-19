@@ -99,41 +99,38 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 
 		// get current accounts with locking to prevent race conditions
 		// lock accounts in a consistent order to prevent deadlocks
-		if arg.FromAccountID < arg.ToAccountID {
-			result.FromAccount, err = q.GetAccountForUpdate(ctx, arg.FromAccountID)
-			if err != nil {
-				return err
-			}
-			result.ToAccount, err = q.GetAccountForUpdate(ctx, arg.ToAccountID)
-			if err != nil {
-				return err
-			}
-		} else {
-			result.ToAccount, err = q.GetAccountForUpdate(ctx, arg.ToAccountID)
-			if err != nil {
-				return err
-			}
-			result.FromAccount, err = q.GetAccountForUpdate(ctx, arg.FromAccountID)
-			if err != nil {
-				return err
-			}
-		}
+		// if arg.FromAccountID < arg.ToAccountID {
+		// 	result.FromAccount, err = q.GetAccountForUpdate(ctx, arg.FromAccountID)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	result.ToAccount, err = q.GetAccountForUpdate(ctx, arg.ToAccountID)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// } else {
+		// 	result.ToAccount, err = q.GetAccountForUpdate(ctx, arg.ToAccountID)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	result.FromAccount, err = q.GetAccountForUpdate(ctx, arg.FromAccountID)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 
-		// update accounts balance
-		result.FromAccount, err = q.UpdateAccount(ctx, UpdateAccountParams{
-			ID:      arg.FromAccountID,
-			Balance: pgtype.Int8{Int64: result.FromAccount.Balance.Int64 - arg.Amount, Valid: true},
+		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.FromAccountID,
+			Amount: pgtype.Int8{Int64: -arg.Amount, Valid: true},
 		})
-
 		if err != nil {
 			return err
 		}
 
-		result.ToAccount, err = q.UpdateAccount(ctx, UpdateAccountParams{
-			ID:      arg.ToAccountID,
-			Balance: pgtype.Int8{Int64: result.ToAccount.Balance.Int64 + arg.Amount, Valid: true},
+		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.ToAccountID,
+			Amount: pgtype.Int8{Int64: arg.Amount, Valid: true},
 		})
-
 		if err != nil {
 			return err
 		}
