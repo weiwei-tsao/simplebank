@@ -12,6 +12,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres17
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: simple_bank
+        options: >2-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -19,6 +32,15 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod' # This reads from go.mod
+
+      - name: Install golang-migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.3/migrate.darwin-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/bin
+          which migrate
+
+      - name: Run migrations
+        run: make migrateup
 
       - name: Test
         run: make test
