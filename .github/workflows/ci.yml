@@ -49,7 +49,7 @@ jobs:
           done
 
       - name: Run migrations
-        run: make migrateup
+        run: make migrationup
 
       - name: Test
         run: make test
