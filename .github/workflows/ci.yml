@@ -15,12 +15,14 @@ jobs:
 
     services:
       postgres:
-        image: postgres17
+        image: postgres:17.6-alpine
         env:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: secret
           POSTGRES_DB: simple_bank
-        options: >2-
+        ports:
+          - 5432:5432
+        options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -35,9 +37,16 @@ jobs:
 
       - name: Install golang-migrate
         run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.3/migrate.darwin-amd64.tar.gz | tar xvz
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.3/migrate.linux-amd64.tar.gz | tar xvz
           sudo mv migrate /usr/bin
           which migrate
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U root; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
 
       - name: Run migrations
         run: make migrateup
